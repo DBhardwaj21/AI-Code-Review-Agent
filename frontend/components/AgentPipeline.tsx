@@ -58,7 +58,7 @@ export const AgentPipeline: React.FC<AgentPipelineProps> = ({ currentStep, elaps
         <div className="flex items-center space-x-2">
           <GitMerge className="h-4 w-4 text-indigo-400" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-            LangGraph Execution Graph
+            Multi-Agent Execution Graph
           </h3>
         </div>
         {elapsedTimeMs !== undefined && (

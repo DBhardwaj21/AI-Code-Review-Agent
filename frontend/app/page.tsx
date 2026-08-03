@@ -9,8 +9,10 @@ import { IssuesList } from "@/components/IssuesList";
 import { DiffViewer } from "@/components/DiffViewer";
 import { MarkdownReport } from "@/components/MarkdownReport";
 import { HistoryDrawer, ReviewHistoryItem } from "@/components/HistoryDrawer";
+import { TestGenerator } from "@/components/TestGenerator";
+import { SettingsModal, ReviewFocus } from "@/components/SettingsModal";
 import { CODE_PRESETS, CodePreset } from "@/constants/presets";
-import { LayoutDashboard, AlertTriangle, GitCompare, FileText, Sparkles, Terminal } from "lucide-react";
+import { LayoutDashboard, AlertTriangle, GitCompare, FileText, Sparkles, Terminal, TestTube } from "lucide-react";
 
 export default function Home() {
   const [code, setCode] = useState<string>(CODE_PRESETS[0].code);
@@ -21,9 +23,13 @@ export default function Home() {
   const [agentStep, setAgentStep] = useState<AgentStep>("idle");
   const [elapsedTimeMs, setElapsedTimeMs] = useState<number>(0);
   
-  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "diff" | "report">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "issues" | "diff" | "tests" | "report">("overview");
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+  const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000");
   
+  const [reviewFocus, setReviewFocus] = useState<ReviewFocus>("all");
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
   const [history, setHistory] = useState<ReviewHistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
 
@@ -33,11 +39,11 @@ export default function Home() {
   useEffect(() => {
     checkBackendHealth();
     loadHistoryFromStorage();
-  }, []);
+  }, [apiUrl]);
 
   const checkBackendHealth = async () => {
     try {
-      const res = await fetch("http://localhost:8000/docs", { method: "HEAD", signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${apiUrl}/docs`, { method: "HEAD", signal: AbortSignal.timeout(2000) });
       setIsBackendConnected(res.ok || res.status === 404 || res.status === 200);
     } catch {
       setIsBackendConnected(false);
@@ -81,19 +87,15 @@ export default function Home() {
   };
 
   const simulateDemoReview = async (userCode: string) => {
-    // Stage 1: Analyzer
     setAgentStep("analyzer");
     await new Promise((r) => setTimeout(r, 900));
 
-    // Stage 2: Issue Finder
     setAgentStep("issue_finder");
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Stage 3: Report Generator
     setAgentStep("report_generator");
     await new Promise((r) => setTimeout(r, 900));
 
-    // Generate intelligent simulated response based on code keywords
     const isPython = userCode.includes("def ") || userCode.includes("import ");
     const isCpp = userCode.includes("#include") || userCode.includes("BufferHandler");
 
@@ -119,7 +121,7 @@ The analyzed C++ source code exhibits high-risk memory management flaws. Using r
 
 \`\`\`cpp
 #include <iostream>
-#include <string font-mono>
+#include <string>
 #include <memory>
 
 class SafeBufferHandler {
@@ -233,7 +235,6 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
     setAgentStep("analyzer");
     const startTime = Date.now();
 
-    // Start timer counter
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setElapsedTimeMs(Date.now() - startTime);
@@ -243,14 +244,12 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
       let data: { analysis: string; issues: string[]; report: string };
 
       if (isBackendConnected) {
-        // Step 1: Analyzer node UI state
         setAgentStep("analyzer");
         await new Promise((r) => setTimeout(r, 400));
         
-        // Step 2: Issue finder UI state
         setAgentStep("issue_finder");
 
-        const response = await fetch("http://localhost:8000/review", {
+        const response = await fetch(`${apiUrl}/review`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code }),
@@ -260,13 +259,11 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
           throw new Error("Backend server responded with error status");
         }
 
-        // Step 3: Report Generator UI state
         setAgentStep("report_generator");
         await new Promise((r) => setTimeout(r, 400));
 
         data = await response.json();
       } else {
-        // Use realistic Simulated Agent Pipeline
         data = await simulateDemoReview(code);
       }
 
@@ -274,7 +271,6 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
       setResult(data);
       setActiveTab("overview");
 
-      // Save to history
       saveReviewToHistory({
         code,
         language,
@@ -315,6 +311,7 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
       <Header
         onSelectPreset={handleSelectPreset}
         onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         historyCount={history.length}
         isBackendConnected={isBackendConnected}
       />
@@ -330,7 +327,7 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
               <div className="flex items-center space-x-2">
                 <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
                 <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">
-                  LangGraph Powered
+                  Autonomous Multi-Agent Engine
                 </span>
               </div>
               <h2 className="text-2xl font-extrabold text-white sm:text-3xl mt-1 tracking-tight">
@@ -340,7 +337,6 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
                 Paste your source code or select a vulnerability preset. The AI Code Review Agent executes multi-agent graph nodes to detect security flaws, memory leaks, and performance bottlenecks in seconds.
               </p>
             </div>
-
           </div>
         </div>
 
@@ -417,6 +413,18 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab("tests")}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    activeTab === "tests"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <TestTube className="h-3.5 w-3.5" />
+                  <span>Unit Tests</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab("report")}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                     activeTab === "report"
@@ -455,7 +463,7 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
                   <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
                   <Sparkles className="h-6 w-6 text-indigo-400" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-200">Executing LangGraph Agent Nodes...</h4>
+                <h4 className="text-sm font-bold text-slate-200">Executing Agent Nodes...</h4>
                 <p className="text-xs text-slate-400 mt-1">
                   Analyzing syntax tree, checking memory bounds, and preparing refactored recommendations.
                 </p>
@@ -487,6 +495,12 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
                       reportText={result.report}
                       onApplyFix={handleApplyFix}
                     />
+                  </div>
+                )}
+
+                {activeTab === "tests" && (
+                  <div className="animate-in fade-in duration-300">
+                    <TestGenerator code={code} language={language} />
                   </div>
                 )}
 
@@ -524,6 +538,16 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
           setActiveTab("overview");
         }}
         onClearHistory={handleClearHistory}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        reviewFocus={reviewFocus}
+        onFocusChange={setReviewFocus}
+        apiUrl={apiUrl}
+        onApiUrlChange={setApiUrl}
       />
 
     </div>

@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { Cpu, ShieldCheck, History, Sparkles, Server, CheckCircle2, AlertCircle } from "lucide-react";
+import { Cpu, History, Sparkles, Server, Settings } from "lucide-react";
 import { CODE_PRESETS, CodePreset } from "@/constants/presets";
 
 interface HeaderProps {
   onSelectPreset: (preset: CodePreset) => void;
   onOpenHistory: () => void;
+  onOpenSettings: () => void;
   historyCount: number;
   isBackendConnected: boolean | null;
 }
@@ -14,6 +15,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onSelectPreset,
   onOpenHistory,
+  onOpenSettings,
   historyCount,
   isBackendConnected,
 }) => {
@@ -29,14 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-lg font-bold text-transparent">
-                AI Code Review Agent
-              </h1>
-              <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 border border-indigo-500/20">
-                LangGraph v2.0
-              </span>
-            </div>
+            <h1 className="bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-lg font-bold text-transparent">
+              AI Code Review Agent
+            </h1>
             <p className="text-xs text-slate-400">Autonomous Code Review & Refactoring Engine</p>
           </div>
         </div>
@@ -61,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Status Badges & Actions */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           
           {/* Backend Connection Indicator */}
           <div className="flex items-center space-x-1.5 rounded-full bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
@@ -79,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
             {isBackendConnected === null && (
-              <span className="text-slate-400">Checking server...</span>
+              <span className="text-slate-400">Checking...</span>
             )}
           </div>
 
@@ -89,13 +86,24 @@ export const Header: React.FC<HeaderProps> = ({
             className="relative flex items-center space-x-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white border border-slate-800"
           >
             <History className="h-3.5 w-3.5 text-slate-400" />
-            <span>History</span>
+            <span className="hidden sm:inline">History</span>
             {historyCount > 0 && (
               <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
                 {historyCount}
               </span>
             )}
           </button>
+
+          {/* Settings Button */}
+          <button
+            onClick={onOpenSettings}
+            title="Settings & Review Options"
+            className="flex items-center space-x-1.5 rounded-lg bg-slate-900 p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white border border-slate-800"
+          >
+            <Settings className="h-3.5 w-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
         </div>
 
       </div>
