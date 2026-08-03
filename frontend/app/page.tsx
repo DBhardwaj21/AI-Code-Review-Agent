@@ -10,7 +10,7 @@ import { DiffViewer } from "@/components/DiffViewer";
 import { MarkdownReport } from "@/components/MarkdownReport";
 import { HistoryDrawer, ReviewHistoryItem } from "@/components/HistoryDrawer";
 import { TestGenerator } from "@/components/TestGenerator";
-import { SettingsModal, ReviewFocus } from "@/components/SettingsModal";
+import { SettingsModal, ReviewFocus, AIProvider } from "@/components/SettingsModal";
 import { CODE_PRESETS, CodePreset } from "@/constants/presets";
 import { LayoutDashboard, AlertTriangle, GitCompare, FileText, Sparkles, Terminal, TestTube } from "lucide-react";
 
@@ -26,6 +26,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"overview" | "issues" | "diff" | "tests" | "report">("overview");
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
   const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000");
+
+  // Provider & API key configuration state
+  const [selectedProvider, setSelectedProvider] = useState<AIProvider>("ollama");
+  const [apiKey, setApiKey] = useState<string>("");
+  const [modelName, setModelName] = useState<string>("llama3.2:latest");
   
   const [reviewFocus, setReviewFocus] = useState<ReviewFocus>("all");
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -35,10 +40,11 @@ export default function Home() {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check backend health on mount
+  // Check backend health & load saved provider settings on mount
   useEffect(() => {
     checkBackendHealth();
     loadHistoryFromStorage();
+    loadProviderSettings();
   }, [apiUrl]);
 
   const checkBackendHealth = async () => {
@@ -48,6 +54,41 @@ export default function Home() {
     } catch {
       setIsBackendConnected(false);
     }
+  };
+
+  const loadProviderSettings = () => {
+    try {
+      const savedProvider = localStorage.getItem("sentinel_ai_provider") as AIProvider;
+      const savedKey = localStorage.getItem("sentinel_ai_key");
+      const savedModel = localStorage.getItem("sentinel_ai_model");
+
+      if (savedProvider) setSelectedProvider(savedProvider);
+      if (savedKey) setApiKey(savedKey);
+      if (savedModel) setModelName(savedModel);
+    } catch (e) {
+      console.error("Failed to load provider settings", e);
+    }
+  };
+
+  const handleProviderChange = (prov: AIProvider) => {
+    setSelectedProvider(prov);
+    try {
+      localStorage.setItem("sentinel_ai_provider", prov);
+    } catch (e) {}
+  };
+
+  const handleApiKeyChange = (key: string) => {
+    setApiKey(key);
+    try {
+      localStorage.setItem("sentinel_ai_key", key);
+    } catch (e) {}
+  };
+
+  const handleModelNameChange = (model: string) => {
+    setModelName(model);
+    try {
+      localStorage.setItem("sentinel_ai_model", model);
+    } catch (e) {}
   };
 
   const loadHistoryFromStorage = () => {
@@ -67,7 +108,7 @@ export default function Home() {
       timestamp: new Date().toISOString(),
       ...item,
     };
-    const updated = [newItem, ...history.slice(0, 19)]; // Keep latest 20
+    const updated = [newItem, ...history.slice(0, 19)];
     setHistory(updated);
     try {
       localStorage.setItem("sentinel_review_history", JSON.stringify(updated));
@@ -137,7 +178,6 @@ public:
 };
 
 void processRequest() {
-    // Smart pointer automatically manages deallocation
     auto buf = std::make_unique<SafeBufferHandler>("Sanitized Safe Input Data");
     buf->printData();
 }
@@ -154,31 +194,24 @@ void processRequest() {
 The Python script contains critical security vulnerabilities, notably unescaped user inputs directly interpolated into SQL statements and hardcoded sensitive credentials.
 
 ### Key Remediation Steps
-1. **Parameterized Queries**: Replace raw string formatting \`f"SELECT..."\` with parameterized placeholders \`cursor.execute("...?", (user, pass))\`.
-2. **Context Managers**: Utilize \`with sqlite3.connect(...)\` to automatically handle connection cleanup and transaction commits.
-3. **Secure Secrets**: Store passwords in environment variables (\`os.getenv\`) rather than plaintext.
+1. **Parameterized Queries**: Replace raw string formatting \`f"SELECT..."\` with parameterized placeholders.
+2. **Context Managers**: Utilize \`with sqlite3.connect(...)\` to automatically handle connection cleanup.
 
 ### Recommended Refactored Implementation
 
 \`\`\`python
 import sqlite3
-import os
 import logging
 
 def authenticate_and_fetch_profile(username: str, password: str):
     try:
         with sqlite3.connect("app_database.db") as conn:
             cursor = conn.cursor()
-            # Parameterized query prevents SQL injection
             query = "SELECT * FROM users WHERE username = ? AND password = ?"
             cursor.execute(query, (username, password))
-            user_data = cursor.fetchone()
-            
-            if user_data:
-                return user_data
-            return None
+            return cursor.fetchone()
     except sqlite3.Error as e:
-        logging.error(f"Database error during authentication: {e}")
+        logging.error(f"Database error: {e}")
         return None
 \`\`\``;
     } else {
@@ -186,40 +219,19 @@ def authenticate_and_fetch_profile(username: str, password: str):
       demoIssues = [
         "- Array Out of Bounds Exception: Loop condition 'i <= items.length' attempts to access undefined index.",
         "- Type Coercion Bug: Adding string price representations causes unexpected string concatenation.",
-        "- Floating Point Inaccuracy: Direct multiplication for currency tax calculations introduces rounding drift.",
-        "- Logic Flaw: Discount application lacks floor validation, resulting in potential negative checkout totals."
+        "- Floating Point Inaccuracy: Direct multiplication for currency tax calculations introduces rounding drift."
       ];
       demoReport = `### Executive Summary
-The calculation routine suffers from runtime edge-case vulnerabilities, including out-of-bounds array reads and JavaScript type coercion quirks during currency evaluation.
-
-### Key Remediation Steps
-1. **Array Loop Fix**: Correct loop comparison from \`i <= items.length\` to \`i < items.length\` (or use \`reduce\`).
-2. **Type Safety**: Ensure numeric parsing on \`item.price\` using \`Number()\` or \`parseFloat()\`.
-3. **Currency Guard**: Enforce \`Math.max(0, total - discount)\` to prevent negative values.
+The calculation routine suffers from runtime edge-case vulnerabilities, including out-of-bounds array reads and JavaScript type coercion quirks.
 
 ### Recommended Refactored Implementation
 
 \`\`\`javascript
 function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
   if (!Array.isArray(items)) return 0;
-
-  // Use Array.reduce for type-safe accumulation
-  let total = items.reduce((sum, item) => {
-    const price = Number(item?.price) || 0;
-    const quantity = Number(item?.quantity) || 1;
-    return sum + (price * quantity);
-  }, 0);
-
-  // Apply discount with floor validation
-  if (discountCode === "SUMMER20") {
-    total = Math.max(0, total - 20);
-  }
-
-  // Calculate tax and round to 2 decimal places
-  const tax = total * Number(taxRate);
-  const finalPrice = Math.round((total + tax) * 100) / 100;
-
-  return finalPrice;
+  let total = items.reduce((sum, item) => sum + (Number(item?.price) * Number(item?.quantity || 1)), 0);
+  if (discountCode === "SUMMER20") total = Math.max(0, total - 20);
+  return Math.round((total + (total * taxRate)) * 100) / 100;
 }
 \`\`\``;
     }
@@ -245,14 +257,19 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
 
       if (isBackendConnected) {
         setAgentStep("analyzer");
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
         
         setAgentStep("issue_finder");
 
         const response = await fetch(`${apiUrl}/review`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({
+            code,
+            provider: selectedProvider,
+            api_key: apiKey,
+            model_name: modelName,
+          }),
         });
 
         if (!response.ok) {
@@ -260,7 +277,7 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
         }
 
         setAgentStep("report_generator");
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
 
         data = await response.json();
       } else {
@@ -314,6 +331,8 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
         onOpenSettings={() => setIsSettingsOpen(true)}
         historyCount={history.length}
         isBackendConnected={isBackendConnected}
+        selectedProvider={selectedProvider}
+        onProviderChange={handleProviderChange}
       />
 
       {/* Main Workspace Layout */}
@@ -336,6 +355,18 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
               <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
                 Paste your source code or select a vulnerability preset. The AI Code Review Agent executes multi-agent graph nodes to detect security flaws, memory leaks, and performance bottlenecks in seconds.
               </p>
+            </div>
+
+            <div className="flex items-center space-x-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+              <div className="text-right">
+                <div className="text-[10px] text-slate-500 uppercase font-mono">Active Provider</div>
+                <div className="text-xs font-bold text-indigo-300">
+                  {selectedProvider === "ollama" ? "🦙 Ollama (" + modelName + ")" :
+                   selectedProvider === "groq" ? "⚡ Groq API" :
+                   selectedProvider === "openai" ? "🤖 OpenAI API" :
+                   selectedProvider === "azure" ? "🏢 Azure OpenAI" : "🛠️ Smart Offline"}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -463,7 +494,7 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
                   <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
                   <Sparkles className="h-6 w-6 text-indigo-400" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-200">Executing Agent Nodes...</h4>
+                <h4 className="text-sm font-bold text-slate-200">Executing Agent Nodes ({selectedProvider})...</h4>
                 <p className="text-xs text-slate-400 mt-1">
                   Analyzing syntax tree, checking memory bounds, and preparing refactored recommendations.
                 </p>
@@ -548,6 +579,12 @@ function calculateCartTotal(items = [], discountCode = "", taxRate = 0) {
         onFocusChange={setReviewFocus}
         apiUrl={apiUrl}
         onApiUrlChange={setApiUrl}
+        selectedProvider={selectedProvider}
+        onProviderChange={handleProviderChange}
+        apiKey={apiKey}
+        onApiKeyChange={handleApiKeyChange}
+        modelName={modelName}
+        onModelNameChange={handleModelNameChange}
       />
 
     </div>

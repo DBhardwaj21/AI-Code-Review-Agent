@@ -7,6 +7,7 @@
 ![React](https://img.shields.io/badge/React-19-blue?logo=react)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-StateGraph-orange)
+![Ollama](https://img.shields.io/badge/Ollama-Offline_LLM-000000?logo=ollama)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?logo=tailwind-css)
 ![TypeScript](https://img.shields.io/badge/TypeScript-v5.0-3178C6?logo=typescript)
 
@@ -20,6 +21,22 @@ Using an agent pipeline architecture, the system passes source code through dedi
 1. **Analyzer Node**: Inspects purpose, syntax structure, and architecture.
 2. **Issue Finder Node**: Detects security flaws, memory leaks, race conditions, and anti-patterns.
 3. **Report Generator Node**: Synthesizes a structured report, health metrics, refactored clean code, and unit tests.
+
+---
+
+## 🤖 Supported AI Engines & Providers
+
+The application supports **5 interchangeable AI providers**, selectable directly from the UI header dropdown or settings modal:
+
+| Provider | Description | Setup Cost | Requirements |
+| :--- | :--- | :--- | :--- |
+| 🦙 **Local Ollama** | 100% Free & Offline inference on your laptop. | **$0 / Free** | [Ollama](https://ollama.com) (`llama3.2`, `qwen2:7b`, etc.) |
+| ⚡ **Groq API** | Ultra-fast free cloud inference using Llama 3.3. | **$0 / Free** | Free API key from [Groq Console](https://console.groq.com/keys) |
+| 🤖 **Standard OpenAI** | GPT-4o & GPT-4o-mini cloud models. | Paid | Standard OpenAI API Key (`sk-...`) |
+| 🏢 **Azure OpenAI** | Enterprise Azure OpenAI deployment. | Paid | Azure Resource Endpoint & Key |
+| 🛠️ **Smart Offline** | Local rule-based static analysis fallback. | **$0 / Free** | **Zero setup required** |
+
+> 💡 **User-Controlled Selection**: You can switch providers dynamically right inside the UI dropdown without modifying `.env` files or restarting the Python backend!
 
 ---
 
@@ -51,13 +68,14 @@ Using an agent pipeline architecture, the system passes source code through dedi
   - **GoogleTest (gtest)** for C++
 - 1-click **Copy Test Code** and **Download Test File** actions (`.test.js`, `.py`, `.cpp`).
 
-### ⚙️ 6. Reviewer Settings & Focus Modes
-- Choose review priorities:
+### ⚙️ 6. Provider Selection & Review Focus Modes
+- Dynamic dropdown selector for **Ollama**, **Groq**, **OpenAI**, **Azure**, and **Smart Offline**.
+- Choose review focus priorities:
   - 🛡️ **Security & Vulnerabilities Priority** (OWASP top 10, SQL Injection, credentials)
   - ⚡ **Performance & Speed Priority** (Time complexity, memory allocations)
   - 🧪 **Testability & Edge Cases Priority** (Uncaught exceptions, null pointer checks)
   - ✨ **Balanced Comprehensive Review**
-- Custom FastAPI Endpoint URL configuration.
+- Custom API key entry and model configuration saved in `localStorage`.
 
 ### 📜 7. Review Session History
 - Slide-over drawer persisting up to 20 past review sessions in `localStorage` for quick retrieval.
@@ -69,7 +87,8 @@ Using an agent pipeline architecture, the system passes source code through dedi
 ```
 AI Code Review Agent/
 ├── backend/                  # FastAPI & LangGraph AI Service
-│   ├── app.py                # LangGraph StateGraph agent pipeline & API routes
+│   ├── app.py                # Multi-provider LangGraph agent pipeline & API routes
+│   ├── .env.example          # Environment variables template for Ollama / Groq / OpenAI
 │   └── env/                  # Python virtual environment
 │
 ├── frontend/                 # Modern Next.js 16 Web Workbench
@@ -78,7 +97,7 @@ AI Code Review Agent/
 │   │   ├── layout.tsx        # App layout wrapper & metadata
 │   │   └── page.tsx          # Main dashboard & live workspace
 │   ├── components/           # UI Components
-│   │   ├── Header.tsx        # Top navbar with logo, status, history & settings
+│   │   ├── Header.tsx        # Top navbar with logo, provider selector, history & settings
 │   │   ├── CodeEditor.tsx    # Monospaced code workspace with preset loader
 │   │   ├── AgentPipeline.tsx # Live agent execution graph visualizer
 │   │   ├── ReviewSummary.tsx # Circular health score gauge & metric cards
@@ -86,7 +105,7 @@ AI Code Review Agent/
 │   │   ├── DiffViewer.tsx    # Side-by-side code diff tool with 1-click apply
 │   │   ├── MarkdownReport.tsx# Formatted markdown report viewer & export tools
 │   │   ├── TestGenerator.tsx # Automated unit test suite generator
-│   │   ├── SettingsModal.tsx # Review focus modes & API configuration modal
+│   │   ├── SettingsModal.tsx # Model provider & review focus configuration modal
 │   │   └── HistoryDrawer.tsx # Slide-over past review history session drawer
 │   ├── constants/            # Code bug sample presets
 │   │   └── presets.ts
@@ -102,13 +121,28 @@ AI Code Review Agent/
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher
 - **Python**: `v3.10` or higher
-- **npm** or **yarn** / **pnpm**
+- *(Optional for Local AI)*: **Ollama** installed from [ollama.com](https://ollama.com)
 
 ---
 
-### 1. Backend Setup (FastAPI & LangGraph)
+### 1. Running with Local Ollama (Recommended Free Setup)
 
-Navigate to the `backend` directory and set up your Python environment:
+1. **Start Ollama service** in terminal:
+   ```bash
+   ollama serve
+   ```
+2. **Download your model of choice**:
+   ```bash
+   ollama run llama3.2
+   # or
+   ollama run qwen2.5-coder
+   ```
+
+---
+
+### 2. Backend Setup (FastAPI & LangGraph)
+
+Navigate to the `backend` directory and activate your Python environment:
 
 ```bash
 cd backend
@@ -123,29 +157,28 @@ python -m venv env
 source env/bin/activate
 
 # Install dependencies
-pip install fastapi uvicorn langgraph langchain-openai python-dotenv pydantic
+pip install fastapi uvicorn langgraph langchain-openai langchain-community python-dotenv pydantic requests
 ```
 
-Create a `.env` file inside the `backend/` directory:
+*(Optional)* Configure default environment keys in `backend/env/.env`:
 
 ```env
-AZURE_OPENAI_ENDPOINT=https://your-azure-openai-endpoint.openai.azure.com/
-AZURE_OPENAI_API_KEY=your_api_key_here
-AZURE_OPENAI_API_VERSION=2024-08-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+# Optional default provider settings (or select directly from UI!)
+USE_OLLAMA=true
+OLLAMA_MODEL=llama3.2:latest
 ```
 
-Run the backend API server:
+Run the backend server:
 
 ```bash
-uvicorn app:app --reload --port 8000
+python -m uvicorn app:app --reload --port 8000
 ```
 
-> **Backend API Docs**: Swagger UI will be available at `http://localhost:8000/docs`.
+> **Backend API Docs**: Interactive Swagger documentation is available at `http://localhost:8000/docs`.
 
 ---
 
-### 2. Frontend Setup (Next.js 16)
+### 3. Frontend Setup (Next.js 16)
 
 Open a new terminal window and navigate to the `frontend` directory:
 
@@ -159,9 +192,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-> 💡 **Demo / Offline Mode**: If the backend Python server is offline or unreachable, the frontend automatically activates a client-side simulated review engine so you can test all features immediately!
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ---
 
@@ -171,12 +202,21 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Performs an end-to-end multi-agent code inspection.
 
-**Request Body (`application/json`):**
+**Request Payload (`application/json`):**
 ```json
 {
-  "code": "function calculateTotal(items) { return items.price; }"
+  "code": "function calculateTotal(items) { return items.price; }",
+  "provider": "ollama",
+  "api_key": "",
+  "model_name": "llama3.2:latest"
 }
 ```
+
+**Parameters:**
+- `code` *(string, required)*: The source code to inspect.
+- `provider` *(string, optional)*: `"ollama"`, `"groq"`, `"openai"`, `"azure"`, or `"smart_offline"`.
+- `api_key` *(string, optional)*: User API key for cloud providers.
+- `model_name` *(string, optional)*: Target model identifier (e.g., `"llama3.2:latest"`, `"llama-3.3-70b-versatile"`, `"gpt-4o-mini"`).
 
 **Response (`200 OK`):**
 ```json
@@ -195,7 +235,7 @@ Performs an end-to-end multi-agent code inspection.
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Lucide Icons, React Markdown.
-- **Backend**: FastAPI, LangGraph (`StateGraph`), LangChain OpenAI, Python 3.10+.
+- **Backend**: FastAPI, LangGraph (`StateGraph`), LangChain, Ollama Integration, Python 3.10+.
 - **Design System**: Dark Cyberpunk Glassmorphism with neon glowing border accents.
 
 ---

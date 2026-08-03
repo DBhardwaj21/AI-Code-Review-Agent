@@ -3,6 +3,7 @@
 import React from "react";
 import { Cpu, History, Sparkles, Server, Settings } from "lucide-react";
 import { CODE_PRESETS, CodePreset } from "@/constants/presets";
+import { AIProvider } from "./SettingsModal";
 
 interface HeaderProps {
   onSelectPreset: (preset: CodePreset) => void;
@@ -10,6 +11,8 @@ interface HeaderProps {
   onOpenSettings: () => void;
   historyCount: number;
   isBackendConnected: boolean | null;
+  selectedProvider: AIProvider;
+  onProviderChange: (provider: AIProvider) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   historyCount,
   isBackendConnected,
+  selectedProvider,
+  onProviderChange,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
@@ -57,11 +62,27 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Status Badges & Actions */}
+        {/* Right Actions & Provider Dropdown */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           
+          {/* Provider Quick Dropdown */}
+          <div className="flex items-center space-x-1.5 rounded-lg bg-slate-900 px-2.5 py-1 text-xs border border-slate-800">
+            <Cpu className="h-3.5 w-3.5 text-indigo-400" />
+            <select
+              value={selectedProvider}
+              onChange={(e) => onProviderChange(e.target.value as AIProvider)}
+              className="bg-transparent text-xs font-semibold text-slate-200 focus:outline-none cursor-pointer"
+            >
+              <option value="ollama" className="bg-slate-900 text-slate-200">🦙 Local Ollama</option>
+              <option value="groq" className="bg-slate-900 text-slate-200">⚡ Groq API (Free)</option>
+              <option value="openai" className="bg-slate-900 text-slate-200">🤖 OpenAI API</option>
+              <option value="azure" className="bg-slate-900 text-slate-200">🏢 Azure OpenAI</option>
+              <option value="smart_offline" className="bg-slate-900 text-slate-200">🛠️ Smart Offline</option>
+            </select>
+          </div>
+
           {/* Backend Connection Indicator */}
-          <div className="flex items-center space-x-1.5 rounded-full bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
+          <div className="hidden lg:flex items-center space-x-1.5 rounded-full bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
             <Server className="h-3.5 w-3.5 text-slate-400" />
             {isBackendConnected === true && (
               <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
