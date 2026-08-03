@@ -25,7 +25,9 @@ export default function Home() {
   
   const [activeTab, setActiveTab] = useState<"overview" | "issues" | "diff" | "tests" | "report">("overview");
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
-  const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000");
+  const [apiUrl, setApiUrl] = useState<string>(
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  );
 
   // Provider & API key configuration state
   const [selectedProvider, setSelectedProvider] = useState<AIProvider>("ollama");
